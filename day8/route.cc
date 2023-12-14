@@ -2,6 +2,8 @@
 #include <iostream>
 #include <unordered_map>
 #include <list>
+#include <vector>
+#include <numeric>
 
 using std::cout;
 using std::endl;
@@ -10,12 +12,16 @@ using ull = unsigned long long;
 struct Node
 {
   Node() = default;
-  Node(std::string l, std::string r) : left(l), right(r) {}
+  Node(std::string n, std::string l, std::string r) : name(n), left(l), right(r) {}
 
+  std::string name;
   std::string left;
   std::string right;
 };
-
+constexpr auto lcm(auto x, auto... xs)
+{
+    return ((x = std::lcm(x, xs)), ...);
+}
 int main()
 {
   std::ifstream file;
@@ -23,7 +29,8 @@ int main()
   std::string route;
   std::string str;
   std::unordered_map<std::string, Node> nodes;
-  std::list<std::unordered_map<std::string, Node>::iterator> nodesItrs;
+  std::vector<std::pair<Node*, ull>> startNodes;
+  startNodes.reserve(6);
 
   std::getline(file, route); // read route
   std::getline(file, str); // read empty string
@@ -31,39 +38,49 @@ int main()
   // read all nodes
   while(std::getline(file, str))
   {
-    Node node(str.substr(7,3), str.substr(12,3));
+    Node node(str.substr(0,3), str.substr(7,3), str.substr(12,3));
     nodes[str.substr(0,3)] = node;
+
+    // save those which end with 'A'
     if(str[2] == 'A')
-      nodesItrs.push_back(nodes.find(str.substr(0,3)));
+      startNodes.push_back({&(nodes.find(str.substr(0,3))->second), 0});
   }
 
-  ull steps = 0;
+  ull res = 1;
   bool finished = false;
-  int amountOfFinishedNodes;
-  int sizeOfItrNodes = nodesItrs.size();
   
   while(!finished)
   {
     for(int i = 0; i < route.size(); ++i)
     {
-      amountOfFinishedNodes = 0;
-      for(int j = 0; j < sizeOfItrNodes; ++j)
+      auto it = startNodes.begin();
+      while(it != startNodes.end())
       {
-        auto it = nodesItrs.front();
-        if(route[i] == 'L') nodesItrs.push_back(nodes.find(it->second.left));
-        if(route[i] == 'R') nodesItrs.push_back(nodes.find(it->second.right));
-        if(it->first[2] == 'Z') amountOfFinishedNodes++;
-        nodesItrs.pop_front();
+        auto& startNodePtr = it->first;
+        auto& steps = it->second;
+        if(startNodePtr->name[2] == 'Z') 
+        {
+          cout << "Steps: " << steps << endl;
+          res = lcm(res, steps);
+          it = startNodes.erase(it);
+        }
+        else
+        {
+          if(route[i] == 'L') startNodePtr = &(nodes.find(startNodePtr->left)->second);
+          if(route[i] == 'R') startNodePtr = &(nodes.find(startNodePtr->right)->second);
+          steps++;
+          it++;
+        }
       }
-      if(amountOfFinishedNodes == sizeOfItrNodes)
+      if(startNodes.empty())
       {
         finished = true;
         break;
       }
-      steps++;
     }
   }
-  cout << "Steps: " << steps << endl;
+  cout << "Res: " << res << endl;
+
   // part 1
   // while(std::getline(file, str))
   // {
